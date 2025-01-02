@@ -156,15 +156,33 @@ graph LR
     EVMInterpreter --> |bool|readOnly
     EVMInterpreter --> |array byte|returnData
 ```
+
+```mermaid
+graph LR
+    operation --> |executionFunc|execute
+    operation --> |uint64|constantGas
+    operation --> |gasFunc|dynamicGas
+    operation --> |int|minStack
+    operation --> |int|maxStack
+    operation --> |memorySizeFunc|memorySize
+```
 ## functions
 ```mermaid
 graph LR
     EVM --> |func|precompile -->|output| PrecompiledContract
     
     %%  resets the EVM with a new transaction context.Reset
-    EVM --> |func|Reset <--- |input | TxContext
+    EVM --> |func|Reset --- |input | TxContext
     EVM --> |func|Cancel
     EVM --> |func|Cancelled --> |output| bool
+    EVM --> |func|Interpreter --> |output| EVMInterpreter
+    EVM --> |func|Call
+    EVM --> |func|CallCode
+    EVM --> |func|DelegateCall
+    EVM --> |func|StaticCall
+    EVM --> |func|Create
+    EVM --> |func|Create2
+    EVM --> |func|ChainConfig 
 ```
 
 ### BlockContext
@@ -366,4 +384,25 @@ type EVMInterpreter struct {
 	readOnly   bool   // Whether to throw on stateful modifications
 	returnData []byte // Last CALL's return data for subsequent reuse
 }
+```
+
+### operation
+```
+type JumpTable [256]*operation
+
+type operation struct {
+	// execute is the operation function
+	execute     executionFunc
+	constantGas uint64
+	dynamicGas  gasFunc
+	// minStack tells how many stack items are required
+	minStack int
+	// maxStack specifies the max length the stack can have for this operation
+	// to not overflow the stack.
+	maxStack int
+
+	// memorySize returns the memory size required for the operation
+	memorySize memorySizeFunc
+}
+
 ```

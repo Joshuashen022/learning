@@ -29,6 +29,63 @@ graph TD
     check9 --> if{contractCreation}
     if --> |true| st.evm.Create
     if --> |false| st.evm.Call
+
+
+```
+
+### evm.Create
+``` mermaid
+graph TD
+
+  st.evm.Create --> |crypto.CreateAddress| contractAddr
+  contractAddr --> evm.create
+  evm.create --> evm.StateDB.SetNonce
+  evm.StateDB.SetNonce --> check10{not exist contractAddr}
+  check10 --> evm.StateDB.CreateAccount
+  evm.StateDB.CreateAccount --> evm.StateDB.CreateContract
+  evm.StateDB.CreateContract --> |contractAddr.nonce=1|SetNonce
+  SetNonce --> |value contractAddr|Transfer
+  Transfer --> contract.SetCodeOptionalHash
+  contract.SetCodeOptionalHash --> evm.interpreter.Run
+  evm.interpreter.Run --> |run| ret
+  ret --> evm.StateDB.SetCode
+
+```
+### evm.call
+```mermaid
+graph TD
+  sender --> st.evm.Call
+  st.to --> st.evm.Call
+  msg.Data --> st.evm.Call
+  st.gasRemaining --> st.evm.Call
+  msg.Value --> st.evm.Call
+  
+  
+  st.evm.Call --> check11{exist toAddr}
+  check11 --> |false| AddAccount2[evm.AccessEvents.AddAccount]
+  AddAccount2 --> CreateAccount2[evm.StateDB.CreateAccount]
+  CreateAccount2 --> Transfer2[evm.Context.Transfer]
+  check11 --> |true| Transfer2
+  Transfer2 --> isPrecompile{isPrecompile}
+  isPrecompile -->|true|RunPrecompiledContract
+  isPrecompile -->|false|evm.StateDB.GetCode
+  evm.StateDB.GetCode --> code
+  code --> |NewContract| contract
+  contract --> evm.interpreter.Run
+  evm.interpreter.Run --> |run| err
+  err --> |not nil| evm.StateDB.RevertToSnapshot
+  err --> |nil| return
+```
+### evm.interpreter.Run
+```mermaid
+graph TD
+  contract --> evm.interpreter.Run
+  input --> evm.interpreter.Run
+  readOnly --> evm.interpreter.Run
+  evm.interpreter.Run --> |run| in.evm.depth++
+  in.evm.depth++ --> |run| pc1[pc == 1]
+  pc1 --> |contract.GetOp| op
+  op --> |in.table|operation
 ```
 
 ### Containing Information
@@ -53,6 +110,9 @@ type Message struct {
 	SkipAccountChecks bool
 }
 ```
+**EVM Version**
+https://docs.blockscout.com/setup/information-and-settings/evm-version-information
+
 **Accounts types**
 - Externally Owned Accounts (EOA)
 - Smart Contract Accounts (SCA)
@@ -179,4 +239,16 @@ New Gas Costs for Witness Creation:
 The proposal introduces specific gas costs for creating
 and updating witnesses, which are necessary for stateless clients
 
+### EIP-158
+EIP-158 是以太坊改进提案（Ethereum Improvement Proposal）之一，它在以太坊网络的 “Spurious Dragon” 硬分叉 中被引入，主要目的是改进以太坊状态树的存储效率，并清理不必要的状态数据。Spurious Dragon 硬分叉发生在 2016 年 11 月 22 日，区块高度为 2,675,000。
 
+EIP-158 的核心目标是通过清理冗余状态和优化状态管理，减少以太坊状态树的膨胀，提升网络的性能和可扩展性。
+
+### EIP-3541
+EIP-3541 的核心目的是为未来的 EVM 改进（例如新的合约代码格式）预留空间。
+它通过 拒绝以 0xEF 开头的合约代码，确保这个前缀不会被滥用。
+这段注释的含义是：在 EIP-3541 启用后，任何以 0xEF 开头的新合约代码都会被拒绝。
+此提案已在 London 硬分叉 中激活，是以太坊网络协议的一部分。
+
+### EIP-4762
+EIP-4762 是一个以太坊改进提案（Ethereum Improvement Proposal），其核心目的是 永久禁止创建 SELFDESTRUCT 操作码的合约。这个提案旨在进一步限制和逐步淘汰以太坊虚拟机（EVM）中的 SELFDESTRUCT 操作码，以解决其在实际使用中带来的问题，并为未来的以太坊升级（如状态清理和合约生命周期管理）铺平道路。
